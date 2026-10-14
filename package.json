@@ -1,0 +1,19 @@
+{
+  "name": "pingroom-starter-artifact-delivery",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Send report files and a checksum manifest to a PingRoom room.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "connect": "node src/connect.js",
+    "start": "node src/main.js",
+    "status": "node src/recovery.js status",
+    "resolve": "node src/recovery.js resolve",
+    "demo": "node src/demo.js",
+    "test": "node --test"
+  },
+  "dependencies": { "@pingroom/sdk": "0.7.0" },
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/pingroom/starter-artifact-delivery.git" }
+}
