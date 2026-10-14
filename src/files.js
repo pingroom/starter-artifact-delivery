@@ -31,17 +31,25 @@ export async function prepareFiles(paths, deliveryId, signal) {
   const files = [];
   for (const path of paths) {
     if (typeof path !== 'string' || !path) throw new Error('Artifact paths must be nonempty strings.');
-    const filename = basename(path);
-    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(filename) || !extensions.has(extname(filename).toLowerCase())) {
+    const source = basename(path);
+    const extension = extname(source);
+    const stem = source.slice(0, -extension.length || undefined);
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(source) || stem.endsWith('.') || !extensions.has(extension.toLowerCase())) {
       throw new Error('Use a simple filename with md, pdf, html, txt, jpg, jpeg, png, or zip extension.');
     }
+    // The server stores the extension lowercased, and the upload is checked
+    // against the name it returns, so send that name from the start.
+    const filename = stem + extension.toLowerCase();
     if (names.has(filename.toLowerCase())) throw new Error('Filenames must be unique; manifest.txt is reserved.');
     names.add(filename.toLowerCase());
     const bytes = await snapshot(path, signal);
     files.push({ filename, bytes, size_bytes: bytes.length, sha256: sha256(bytes) });
   }
-  const manifest = { format: 'pingroom-artifact-manifest/v1', delivery_id: deliveryId, files: files.map(({ filename, size_bytes, sha256 }) => ({ filename, size_bytes, sha256 })) };
-  const bytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+  // Plain text, one `sha256  size  filename` line per file. The server checks
+  // an attachment's content against its extension, and JSON content is not
+  // accepted as .txt.
+  const lines = ['pingroom-artifact-manifest/v1', `delivery_id ${deliveryId}`, ...files.map(({ filename, size_bytes, sha256 }) => `${sha256}  ${size_bytes}  ${filename}`)];
+  const bytes = Buffer.from(`${lines.join('\n')}\n`);
   if (bytes.length > MAX_BYTES) throw new Error('Manifest exceeds the attachment limit.');
   files.push({ filename: 'manifest.txt', bytes, size_bytes: bytes.length, sha256: sha256(bytes) });
   return files;

@@ -52,10 +52,12 @@ test('uploads exact file snapshots and checksum manifest, then one attachment pi
   const result = await deliver(f.options);
   assert.deepEqual(result, { reused: false, delivery_id: 'report-001', notification_id: 'ping-1', status: 'sent' });
   assert.equal(f.uploads.length, 3);
-  const manifest = JSON.parse(f.uploads[2].bytes.toString());
-  assert.equal(manifest.delivery_id, 'report-001');
-  assert.equal(manifest.files.length, 2, 'Manifest excludes itself');
-  assert.deepEqual(manifest.files, f.uploads.slice(0, 2).map((file) => ({ filename: file.filename, size_bytes: file.bytes.length, sha256: sha256(file.bytes) })));
+  const [format, delivery, ...entries] = f.uploads[2].bytes.toString().trimEnd().split('\n');
+  assert.equal(format, 'pingroom-artifact-manifest/v1');
+  assert.equal(delivery, 'delivery_id report-001');
+  assert.equal(entries.length, 2, 'Manifest excludes itself');
+  assert.deepEqual(entries, f.uploads.slice(0, 2).map((file) => `${sha256(file.bytes)}  ${file.bytes.length}  ${file.filename}`));
+  assert.throws(() => JSON.parse(f.uploads[2].bytes.toString()), SyntaxError, 'The server refuses JSON content as .txt');
   const send = f.calls.at(-1);
   assert.equal(send.path, '/api/agent/rooms/test-room/notifications');
   assert.deepEqual(send.body.attachment_ids, ['att-1', 'att-2', 'att-3']);
@@ -102,6 +104,24 @@ test('all file validation completes before any upload', async (t) => {
   await assert.rejects(deliver({ ...f.options, paths: [...f.paths, ...f.paths] }), /1–3/);
   await assert.rejects(deliver({ ...f.options, paths: [f.paths[0], f.paths[0]] }), /unique/);
   await assert.rejects(deliver({ ...f.options, paths: [join(f.root, 'manifest.txt')] }), /reserved/);
+  assert.equal(f.calls.length, 0);
+});
+
+test('an uppercase extension is sent lowercased, as the server stores it', async (t) => {
+  const f = await fixture(t);
+  const upper = join(f.root, 'REPORT.MD');
+  await writeFile(upper, '# Shouted report\n');
+  const result = await deliver({ ...f.options, paths: [upper] });
+  assert.equal(result.status, 'sent');
+  assert.deepEqual(f.uploads.map((file) => file.filename), ['REPORT.md', 'manifest.txt']);
+  assert.match(f.uploads[1].bytes.toString(), /  REPORT\.md$/m);
+});
+
+test('a name the server would rename is refused before any upload', async (t) => {
+  const f = await fixture(t);
+  const dotted = join(f.root, 'report..md');
+  await writeFile(dotted, '# Report\n');
+  await assert.rejects(deliver({ ...f.options, paths: [dotted] }), /simple filename/);
   assert.equal(f.calls.length, 0);
 });
 

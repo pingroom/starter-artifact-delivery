@@ -58,14 +58,18 @@ settings, and fill them in. Credentials are never stored in delivery journals.
 
 - Supply **1–3 regular files**, each **1 byte–5 MiB**. The manifest uses the fourth
   attachment slot. Allowed extensions are `md`, `pdf`, `html`, `txt`, `jpg`,
-  `jpeg`, `png`, and `zip`; use `.txt` for JSON or CSV text. The server checks
-  content against the extension, so renaming arbitrary bytes to `.pdf` will fail.
+  `jpeg`, `png`, and `zip`. The server checks content against the extension, so
+  renaming arbitrary bytes to `.pdf` will fail, and `.txt` accepts only plain
+  text: JSON and CSV content are recognized as such and refused. Zip them instead.
 - Names must be unique, use letters, numbers, dots, underscores, or hyphens,
-  start with a letter or number, and contain at most 100 characters.
+  start with a letter or number, and contain at most 100 characters. A dot
+  cannot come right before the extension. An uppercase extension is sent
+  lowercased (`REPORT.PDF` becomes `REPORT.pdf`), as the server stores it.
   `manifest.txt` is reserved.
 - Every file is read and hashed before the first upload. Uploads use those
   snapshots, so later path changes cannot silently replace the prepared bytes.
-  The manifest contains each source filename, byte length, and SHA-256; it
+  The manifest is plain text: a `pingroom-artifact-manifest/v1` line, a
+  `delivery_id` line, then one `<sha256>  <bytes>  <filename>` line per file. It
   excludes itself. Its own hash appears in the ping's structured data.
 - This checksum manifest describes the supplied bytes; it is not a signature,
   malware scan, or proof of authorship. The SDK's `attachments.manifest()` is a
