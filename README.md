@@ -139,4 +139,4 @@ real account's Pro entitlement.
 [Job progress starter](https://github.com/pingroom/starter-job-progress) ·
 [Human review starter](https://github.com/pingroom/starter-human-review)
 
-MIT licensed. `@pingroom/sdk` 0.7.0 is pinned with a lockfile.
+MIT licensed. `@pingroom/sdk` 0.7.1 is pinned with a lockfile.
